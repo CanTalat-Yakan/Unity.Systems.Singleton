@@ -28,7 +28,7 @@ public class Singleton<T> : MonoBehaviour where T : Component
 
     protected static T _instance { get; set; }
 
-    protected virtual void Awake()
+    public virtual void Awake()
     {
         if (Application.isPlaying)
             InitializeSingleton();
