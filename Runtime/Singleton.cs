@@ -28,6 +28,12 @@ public class Singleton<T> : MonoBehaviour where T : Component
 
     protected static T _instance { get; set; }
 
+    protected virtual void OnDestroy()
+    {
+        if (_instance == this)
+            _instance = null;
+    }
+
     public virtual void Awake()
     {
         if (Application.isPlaying)
