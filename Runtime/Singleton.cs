@@ -21,53 +21,28 @@ namespace UnityEssentials
         public static T TryGetInstance() => HasInstance ? s_instance : null;
         public static T Current => s_instance;
 
-        /// <summary>
-        /// Gets the singleton instance of the type <typeparamref name="T"/>.
-        /// </summary>
-        /// <remarks>This property ensures that only one instance of <typeparamref name="T"/> exists in
-        /// the scene.  If an instance is not found, a new GameObject is created, and the component of type
-        /// <typeparamref name="T"/>  is added to it. The GameObject is automatically named based on the type of
-        /// <typeparamref name="T"/>.</remarks>
-        public static T Instance => s_instance ??= 
-            FindAnyObjectByType<T>() ?? new GameObject(typeof(T).Name + "AutoCreated").AddComponent<T>();
-
-        /// <summary>
-        /// Represents a static instance of type <typeparamref name="T"/>.
-        /// </summary>
-        /// <remarks>This field is intended for internal use only and provides a shared instance of the
-        /// specified type. It is not thread-safe and should be accessed with appropriate synchronization if used in a
-        /// multithreaded context.</remarks>
+        public static T Instance => s_instance ??= FindAnyObjectByType<T>() ?? CreateHiddenAutoSingleton();
         internal static T s_instance;
 
-        /// <summary>
-        /// Performs cleanup operations when the object is destroyed.
-        /// </summary>
-        /// <remarks>If this instance is the current singleton instance, it resets the singleton reference
-        /// to <see langword="null"/>. Override this method in a derived class to implement additional cleanup
-        /// logic.</remarks>
+        private static T CreateHiddenAutoSingleton()
+        {
+            var go = new GameObject(typeof(T).Name + "AutoCreated");
+            go.hideFlags = HideFlags.HideAndDontSave;
+            return go.AddComponent<T>();
+        }
+
         public virtual void OnDestroy()
         {
             if (s_instance == this)
                 s_instance = null;
         }
 
-        /// <summary>
-        /// Performs initialization logic when the script instance is being loaded.
-        /// </summary>
-        /// <remarks>If the application is running, this method initializes the singleton instance  for
-        /// the associated class. Override this method in derived classes to provide  additional initialization
-        /// logic.</remarks>
         public virtual void Awake()
         {
             if (Application.isPlaying)
                 InitializeSingleton();
         }
 
-        /// <summary>
-        /// Initializes the singleton instance of the current class.
-        /// </summary>
-        /// <remarks>This method assigns the current instance to the static singleton field.  It should be
-        /// called to ensure the singleton instance is properly initialized.</remarks>
         internal virtual void InitializeSingleton() =>
             s_instance = this as T;
     }
