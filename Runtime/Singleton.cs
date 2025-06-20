@@ -26,7 +26,7 @@ namespace UnityEssentials
 
         private static T CreateHiddenAutoSingleton()
         {
-            var go = new GameObject(typeof(T).Name + "AutoCreated");
+            var go = new GameObject(typeof(T).Name + " AutoCreated");
             go.hideFlags = HideFlags.HideAndDontSave;
             return go.AddComponent<T>();
         }
