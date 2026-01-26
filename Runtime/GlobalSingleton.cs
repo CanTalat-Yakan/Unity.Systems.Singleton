@@ -1,4 +1,6 @@
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 namespace UnityEssentials
@@ -20,6 +22,16 @@ namespace UnityEssentials
         public static bool HasInstance => s_instance != null;
         public static T Current => s_instance;
 
+        /// <summary>
+        /// Attempts to get an already-created instance without triggering creation or any expensive searches.
+        /// Safe to call from constructors / serialization contexts.
+        /// </summary>
+        public static bool TryGetInstance(out T instance)
+        {
+            instance = s_instance;
+            return instance != null;
+        }
+
         public static T Instance
         {
             get
@@ -27,9 +39,14 @@ namespace UnityEssentials
                 if (s_instance != null)
                     return s_instance;
 
-                // Rebind if an instance already exists (including hidden objects in editor).
-                s_instance = FindExistingInstance(includeInactive: true, includeHiddenInEditor: true);
+                // Important: field initializers / constructors (e.g. ScriptableObject / CustomPass) can run
+                // on Unity's loading thread or during serialization where Find* APIs are disallowed.
+                // In those cases we must *not* call any Unity object-finding/creation APIs.
+                if (!GlobalSingletonBootstrap.CanUseUnityObjectApi)
+                    return null;
 
+                // Try to rebind to an existing instance (runtime-safe API).
+                s_instance = FindExistingInstance(includeInactive: true);
                 if (s_instance != null)
                     return s_instance;
 
@@ -39,7 +56,6 @@ namespace UnityEssentials
 
                 s_instance = go.AddComponent<T>();
 
-                // Keep runtime alive across scene loads; editor persistence is handled by hideFlags.
                 if (Application.isPlaying)
                     DontDestroyOnLoad(go);
 
@@ -49,43 +65,10 @@ namespace UnityEssentials
 
         internal static T s_instance;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void SubsystemRegistration()
-        {
-            // Always clear statics; the hidden object (if any) remains and will be rebound via Instance.
-            s_instance = null;
-        }
-
-#if UNITY_EDITOR
-        [InitializeOnLoadMethod]
-        private static void EnsureEditor()
-        {
-            // Ensure it exists in edit mode (and after assembly reloads).
-            EditorApplication.delayCall += () =>
-            {
-                if (!EditorApplication.isPlayingOrWillChangePlaymode)
-                    _ = Instance;
-            };
-
-            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
-            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-        }
-
-        private static void OnPlayModeStateChanged(PlayModeStateChange state)
-        {
-            // Rebind/create on both sides of the transition.
-            if (state == PlayModeStateChange.EnteredPlayMode ||
-                state == PlayModeStateChange.EnteredEditMode)
-            {
-                s_instance = null;
-                _ = Instance;
-            }
-        }
-#endif
+        internal static void ResetStatics() => s_instance = null;
 
         protected virtual void Awake()
         {
-            // Ensure single instance; if created manually, it becomes the singleton.
             if (s_instance == null)
             {
                 s_instance = this as T;
@@ -99,7 +82,6 @@ namespace UnityEssentials
             }
             else if (s_instance != this)
             {
-                // Replace-or-destroy policy: destroy duplicates.
                 DestroyImmediate(gameObject);
             }
         }
@@ -115,24 +97,8 @@ namespace UnityEssentials
             go.hideFlags = HideFlags.HideAndDontSave;
         }
 
-        private static T FindExistingInstance(bool includeInactive, bool includeHiddenInEditor)
+        private static T FindExistingInstance(bool includeInactive)
         {
-#if UNITY_EDITOR
-            if (includeHiddenInEditor)
-            {
-                // Finds HideAndDontSave objects too.
-                var all = Resources.FindObjectsOfTypeAll<T>();
-                for (int i = 0; i < all.Length; i++)
-                {
-                    var c = all[i];
-                    if (c == null) continue;
-                    if (!includeInactive && !c.gameObject.activeInHierarchy) continue;
-                    return c;
-                }
-                return null;
-            }
-#endif
-            // Runtime / non-hidden search
             return UnityEngine.Object.FindFirstObjectByType<T>(
                 includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude
             );
