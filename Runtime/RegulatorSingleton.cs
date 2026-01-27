@@ -8,31 +8,40 @@ namespace UnityEssentials
     /// </summary>
     public class RegulatorSingleton<T> : Singleton<T> where T : Component
     {
+        // Kept for debugging/inspection; not relied upon for correctness.
         internal float _initializationTime;
 
         internal override void InitializeSingleton()
         {
             _initializationTime = Time.time;
 
+            // Ensure persistence root.
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
 
-            foreach (var old in FindExistingInstances())
-                if (old._initializationTime < _initializationTime)
-                    Destroy(old.gameObject);
+            // "Last initialized wins": when this instance initializes, it becomes the singleton.
+            // We don't rely on timestamps (ties can happen within the same frame).
+            foreach (var other in FindExistingInstances())
+            {
+                if (other == null || other == this)
+                    continue;
 
-            if (s_instance == null)
-                s_instance = this as T;
+                Destroy(other.gameObject);
+            }
+
+            s_instance = this as T;
         }
 
-        private IEnumerable<RegulatorSingleton<T>> FindExistingInstances()
+        private static IEnumerable<RegulatorSingleton<T>> FindExistingInstances()
         {
-            var oldInstances = FindObjectsByType<T>(FindObjectsSortMode.None);
-            foreach (var old in oldInstances)
-            {
-                var rs = old.GetComponent<RegulatorSingleton<T>>();
+            var instances = Object.FindObjectsByType<RegulatorSingleton<T>>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+            foreach (var rs in instances)
                 if (rs != null)
                     yield return rs;
-            }
         }
     }
 }

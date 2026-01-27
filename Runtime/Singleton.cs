@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -17,8 +16,49 @@ namespace UnityEssentials
         public static T TryGetInstance() => HasInstance ? s_instance : null;
         public static T Current => s_instance;
 
-        public static T Instance => s_instance ??= FindAnyObjectByType<T>() ?? CreateHiddenAutoSingleton();
+        /// <summary>
+        /// Returns the singleton instance.
+        /// If none exists, this will try to find one in the current loaded objects and may auto-create one.
+        /// 
+        /// Note: Unity object APIs are only valid on the main thread and not during certain editor update/import phases.
+        /// In those contexts, this returns null instead of throwing.
+        /// </summary>
+        public static T Instance
+        {
+            get
+            {
+                if (s_instance != null)
+                    return s_instance;
+
+                if (!CanUseUnityObjectApi)
+                    return null;
+
+                s_instance = FindExistingInstance(includeInactive: true);
+                return s_instance ??= CreateHiddenAutoSingleton();
+            }
+        }
+
         internal static T s_instance;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticsOnDomainReload() =>
+            s_instance = null;
+
+        private static bool CanUseUnityObjectApi
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (EditorApplication.isUpdating)
+                    return false;
+#endif
+                // Reuse the package's best-effort main-thread guard if available.
+                return GlobalSingletonBootstrap.CanUseUnityObjectApi;
+            }
+        }
+
+        private static T FindExistingInstance(bool includeInactive) =>
+            Object.FindAnyObjectByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
 
         private static T CreateHiddenAutoSingleton()
         {
@@ -33,8 +73,23 @@ namespace UnityEssentials
                 InitializeSingleton();
         }
 
-        internal virtual void InitializeSingleton() =>
-            s_instance = this as T;
+        internal virtual void InitializeSingleton()
+        {
+            if (s_instance == null)
+            {
+                s_instance = this as T;
+                return;
+            }
+
+            if (s_instance != this)
+            {
+                // Default duplicate handling: keep the first instance.
+                if (Application.isPlaying)
+                    Destroy(gameObject);
+                else
+                    DestroyImmediate(gameObject);
+            }
+        }
 
         public virtual void OnDestroy()
         {

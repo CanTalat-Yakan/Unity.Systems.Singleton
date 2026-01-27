@@ -9,17 +9,20 @@ namespace UnityEssentials
     {
         internal override void InitializeSingleton()
         {
+            // Ensure this object becomes a root object before moving it to the DDOL scene.
+            transform.SetParent(null);
+
             if (s_instance == null)
             {
                 s_instance = this as T;
-
-                transform.SetParent(null);
                 DontDestroyOnLoad(gameObject);
+                return;
             }
-            else if (s_instance != this)
-            {
+
+            if (s_instance != this)
                 Destroy(gameObject);
-            }
+            else
+                DontDestroyOnLoad(gameObject);
         }
     }
 }
