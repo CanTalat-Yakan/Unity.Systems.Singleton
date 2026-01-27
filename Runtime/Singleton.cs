@@ -58,7 +58,7 @@ namespace UnityEssentials
         }
 
         private static T FindExistingInstance(bool includeInactive) =>
-            Object.FindAnyObjectByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
+            FindAnyObjectByType<T>(includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
 
         private static T CreateHiddenAutoSingleton()
         {

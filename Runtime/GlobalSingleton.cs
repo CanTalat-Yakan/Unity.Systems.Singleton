@@ -1,6 +1,3 @@
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 using UnityEngine;
 
 namespace UnityEssentials
@@ -65,7 +62,20 @@ namespace UnityEssentials
 
         internal static T s_instance;
 
-        internal static void ResetStatics() => s_instance = null;
+        internal static void ResetStatics() => 
+            s_instance = null;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticsOnDomainReload() =>
+            ResetStatics();
+
+        static GlobalSingleton()
+        {
+            // Default behavior: all GlobalSingletons should exist without manual scene setup.
+            // Skip abstract types.
+            if (!typeof(T).IsAbstract)
+                GlobalSingletonAutoCreate.Register(typeof(T));
+        }
 
         protected virtual void Awake()
         {
@@ -81,9 +91,7 @@ namespace UnityEssentials
                 }
             }
             else if (s_instance != this)
-            {
                 DestroyImmediate(gameObject);
-            }
         }
 
         protected virtual void OnDestroy()
@@ -92,16 +100,10 @@ namespace UnityEssentials
                 s_instance = null;
         }
 
-        private static void ConfigureRoot(GameObject go)
-        {
-            go.hideFlags = HideFlags.HideAndDontSave;
-        }
+        private static void ConfigureRoot(GameObject go) =>
+            go.hideFlags = HideFlags.DontSave;
 
-        private static T FindExistingInstance(bool includeInactive)
-        {
-            return UnityEngine.Object.FindFirstObjectByType<T>(
-                includeInactive ? FindObjectsInactive.Include : FindObjectsInactive.Exclude
-            );
-        }
+        private static T FindExistingInstance(bool includeInactive) =>
+            FindFirstObjectByType<T>(includeInactive? FindObjectsInactive.Include : FindObjectsInactive.Exclude);
     }
 }

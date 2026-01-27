@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -9,6 +11,53 @@ namespace UnityEssentials
 {
     internal static class GlobalSingletonBootstrap
     {
+        private static readonly HashSet<Type> SAutoCreate = new();
+
+        internal static void RegisterAutoCreateType(Type type)
+        {
+            if (type == null)
+                return;
+
+            // Only register valid GlobalSingleton subclasses.
+            if (!typeof(Component).IsAssignableFrom(type))
+                return;
+
+            lock (SAutoCreate)
+                SAutoCreate.Add(type);
+        }
+
+        internal static void EnsureAllAutoCreated()
+        {
+            if (!CanUseUnityObjectApi)
+                return;
+
+            Type[] types;
+            lock (SAutoCreate)
+                types = SAutoCreate.ToArray();
+
+            foreach (var t in types)
+            {
+                try
+                {
+                    // Touch Instance via reflection: GlobalSingleton<T>.Instance
+                    var baseType = t;
+                    // Ensure we’re dealing with a GlobalSingleton<>
+                    while (baseType != null && (!baseType.IsGenericType || baseType.GetGenericTypeDefinition() != typeof(GlobalSingleton<>)))
+                        baseType = baseType.BaseType;
+
+                    if (baseType == null)
+                        continue;
+
+                    var instanceProp = baseType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    _ = instanceProp?.GetValue(null, null);
+                }
+                catch
+                {
+                    // Best-effort only; never break domain load.
+                }
+            }
+        }
+
         internal static bool CanUseUnityObjectApi
         {
             get
@@ -41,22 +90,22 @@ namespace UnityEssentials
     /// </summary>
     internal sealed class UnityMainThread : MonoBehaviour
     {
-        private static int s_mainThreadId;
+        private static int _sMainThreadId;
 
         internal static bool IsMainThread
         {
             get
             {
-                if (s_mainThreadId == 0)
+                if (_sMainThreadId == 0)
                     return false;
-                return Environment.CurrentManagedThreadId == s_mainThreadId;
+                return Environment.CurrentManagedThreadId == _sMainThreadId;
             }
         }
 
         internal static void Touch()
         {
-            if (s_mainThreadId == 0)
-                s_mainThreadId = Environment.CurrentManagedThreadId;
+            if (_sMainThreadId == 0)
+                _sMainThreadId = Environment.CurrentManagedThreadId;
         }
 
         private void Awake() =>
@@ -69,7 +118,7 @@ namespace UnityEssentials
             var go = new GameObject("[UnityMainThread]");
             go.hideFlags = HideFlags.HideAndDontSave;
             go.AddComponent<UnityMainThread>();
-            UnityEngine.Object.DontDestroyOnLoad(go);
+            DontDestroyOnLoad(go);
         }
     }
 }
