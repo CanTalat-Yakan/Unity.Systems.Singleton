@@ -25,6 +25,14 @@ namespace UnityEssentials
         private static void EnsureAutoCreatedRuntime() =>
             EnsureAutoCreated();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetAllRegisteredSingletonStaticsOnDomainReload()
+        {
+            // Unity doesn't allow RuntimeInitializeOnLoad methods in generic classes,
+            // so we reset all registered GlobalSingleton<T> statics here.
+            GlobalSingletonBootstrap.ResetAllRegisteredSingletonStatics();
+        }
+
 #if UNITY_EDITOR
         [InitializeOnLoadMethod]
         private static void EnsureAutoCreatedEditor() =>

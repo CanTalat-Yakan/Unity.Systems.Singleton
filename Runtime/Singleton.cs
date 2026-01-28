@@ -40,8 +40,7 @@ namespace UnityEssentials
 
         internal static T s_instance;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticsOnDomainReload() =>
+        internal static void ResetStatics() =>
             s_instance = null;
 
         private static bool CanUseUnityObjectApi
@@ -95,6 +94,14 @@ namespace UnityEssentials
         {
             if (s_instance == this)
                 s_instance = null;
+        }
+
+        static Singleton()
+        {
+            // Track this singleton type so statics can be reset on domain reload
+            // without using RuntimeInitializeOnLoadMethod on a generic class.
+            if (!typeof(T).IsAbstract)
+                GlobalSingletonBootstrap.RegisterSingletonTypeForDomainReset(typeof(T));
         }
     }
 }

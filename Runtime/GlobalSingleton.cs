@@ -62,12 +62,9 @@ namespace UnityEssentials
 
         internal static T s_instance;
 
-        internal static void ResetStatics() => 
+        internal static void ResetStatics() =>
             s_instance = null;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticsOnDomainReload() =>
-            ResetStatics();
 
         static GlobalSingleton()
         {

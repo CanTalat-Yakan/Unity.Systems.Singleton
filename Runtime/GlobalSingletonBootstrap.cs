@@ -11,7 +11,8 @@ namespace UnityEssentials
 {
     internal static class GlobalSingletonBootstrap
     {
-        private static readonly HashSet<Type> SAutoCreate = new();
+        private static readonly HashSet<Type> s_autoCreate = new();
+        private static readonly HashSet<Type> s_singletonStaticsToReset = new();
 
         internal static void RegisterAutoCreateType(Type type)
         {
@@ -22,8 +23,20 @@ namespace UnityEssentials
             if (!typeof(Component).IsAssignableFrom(type))
                 return;
 
-            lock (SAutoCreate)
-                SAutoCreate.Add(type);
+            lock (s_autoCreate)
+                s_autoCreate.Add(type);
+        }
+
+        internal static void RegisterSingletonTypeForDomainReset(Type type)
+        {
+            if (type == null)
+                return;
+
+            if (!typeof(Component).IsAssignableFrom(type))
+                return;
+
+            lock (s_singletonStaticsToReset)
+                s_singletonStaticsToReset.Add(type);
         }
 
         internal static void EnsureAllAutoCreated()
@@ -32,8 +45,8 @@ namespace UnityEssentials
                 return;
 
             Type[] types;
-            lock (SAutoCreate)
-                types = SAutoCreate.ToArray();
+            lock (s_autoCreate)
+                types = s_autoCreate.ToArray();
 
             foreach (var t in types)
             {
@@ -50,6 +63,59 @@ namespace UnityEssentials
 
                     var instanceProp = baseType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                     _ = instanceProp?.GetValue(null, null);
+                }
+                catch
+                {
+                    // Best-effort only; never break domain load.
+                }
+            }
+        }
+
+        internal static void ResetAllRegisteredSingletonStatics()
+        {
+            Type[] types;
+            lock (s_autoCreate)
+                types = s_autoCreate.ToArray();
+
+            foreach (var t in types)
+            {
+                try
+                {
+                    // We want GlobalSingleton<TDerived>.s_instance to be cleared.
+                    // ResetStatics() is internal static on the generic base.
+                    var baseType = t;
+                    while (baseType != null && (!baseType.IsGenericType || baseType.GetGenericTypeDefinition() != typeof(GlobalSingleton<>)))
+                        baseType = baseType.BaseType;
+
+                    if (baseType == null)
+                        continue;
+
+                    var resetMethod = baseType.GetMethod("ResetStatics", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                    resetMethod?.Invoke(null, null);
+                }
+                catch
+                {
+                    // Best-effort only; never break domain load.
+                }
+            }
+
+            Type[] singletonTypes;
+            lock (s_singletonStaticsToReset)
+                singletonTypes = s_singletonStaticsToReset.ToArray();
+
+            foreach (var t in singletonTypes)
+            {
+                try
+                {
+                    var baseType = t;
+                    while (baseType != null && (!baseType.IsGenericType || baseType.GetGenericTypeDefinition() != typeof(Singleton<>)))
+                        baseType = baseType.BaseType;
+
+                    if (baseType == null)
+                        continue;
+
+                    var resetMethod = baseType.GetMethod("ResetStatics", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                    resetMethod?.Invoke(null, null);
                 }
                 catch
                 {
