@@ -1,7 +1,7 @@
 {
-  "name": "com.unityessentials.singleton",
-  "version": "1.0.0",
-  "displayName": "Unity Systems Singleton",
+  "name": "com.unityessentials.systems.singleton",
+  "version": "2.0.0",
+  "displayName": "Systems Singleton",
   "description": "This is a part of the UnityEssentials Ecosystem",
   "unity": "6000.0",
   "unityRelease": "",
