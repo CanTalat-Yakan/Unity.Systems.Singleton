@@ -73,16 +73,15 @@ namespace UnityEssentials
 
         internal static void ResetAllRegisteredSingletonStatics()
         {
-            Type[] types;
+            // Reset GlobalSingleton<> statics for types that opted into auto-create.
+            Type[] globalSingletonTypes;
             lock (s_autoCreate)
-                types = s_autoCreate.ToArray();
+                globalSingletonTypes = s_autoCreate.ToArray();
 
-            foreach (var t in types)
+            foreach (var t in globalSingletonTypes)
             {
                 try
                 {
-                    // We want GlobalSingleton<TDerived>.s_instance to be cleared.
-                    // ResetStatics() is internal static on the generic base.
                     var baseType = t;
                     while (baseType != null && (!baseType.IsGenericType || baseType.GetGenericTypeDefinition() != typeof(GlobalSingleton<>)))
                         baseType = baseType.BaseType;
@@ -99,6 +98,7 @@ namespace UnityEssentials
                 }
             }
 
+            // Reset regular Singleton<> statics for any registered singleton types.
             Type[] singletonTypes;
             lock (s_singletonStaticsToReset)
                 singletonTypes = s_singletonStaticsToReset.ToArray();
