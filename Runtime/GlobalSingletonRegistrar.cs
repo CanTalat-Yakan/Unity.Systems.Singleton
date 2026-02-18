@@ -189,7 +189,6 @@ namespace UnityEssentials
                     UnityEngine.Object.DontDestroyOnLoad(root);
             }
 
-            // Never save, but keep visible.
             root.hideFlags = HideFlags.DontSave;
             root.SetActive(true);
 
@@ -241,16 +240,9 @@ namespace UnityEssentials
 
         private static void OnPlayModeStateChanged(UnityEditor.PlayModeStateChange state)
         {
-            // Before entering playmode: wipe any editor-time globals.
-            if (state == UnityEditor.PlayModeStateChange.ExitingEditMode)
+            if (state == UnityEditor.PlayModeStateChange.ExitingEditMode || 
+                state == UnityEditor.PlayModeStateChange.ExitingPlayMode)
                 DestroyAll(immediate: true);
-
-            // After leaving playmode: wipe runtime globals and ensure we have a fresh editor root.
-            if (state == UnityEditor.PlayModeStateChange.ExitingPlayMode)
-            {
-                DestroyAll(immediate: true);
-                GetOrCreateRoot();
-            }
         }
 #endif
 
