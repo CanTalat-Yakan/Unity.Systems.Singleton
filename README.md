@@ -149,7 +149,6 @@ GlobalServices.Instance?.DoSomething();
 - `Runtime/PersistentSingleton.cs` – `PersistentSingleton<T>` implementation
 - `Runtime/RegulatorSingleton.cs` – `RegulatorSingleton<T>` implementation
 - `Runtime/GlobalSingleton.cs` – `GlobalSingleton<T>` implementation
-- `Runtime/GlobalSingletonBootstrap.cs` – Unity main-thread / editor-guard utilities
 - `Runtime/UnityEssentials.Singleton.asmdef` – Runtime assembly definition
 
 ## Tags

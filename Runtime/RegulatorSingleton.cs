@@ -4,17 +4,25 @@ using UnityEngine;
 namespace UnityEssentials
 {
     /// <summary>
-    /// Ensures only the most recently initialized instance persists across scene loads (runtime).
+    /// A specialized implementation of the singleton pattern for Unity components
+    /// that ensures only one instance of the class exists and persists across scene
+    /// loads. This implementation prioritizes the most recently initialized object
+    /// as the singleton instance, replacing any previous instances.
     /// </summary>
+    /// <typeparam name="T">
+    /// The type of the component that will be used as the singleton instance.
+    /// </typeparam>
+    /// <remarks>
+    /// This class builds upon the base Singleton class by adding additional behavior
+    /// to manage multiple instances. Any previously existing instances of the
+    /// singleton in the scene are automatically destroyed in favor of the
+    /// newly initialized instance. The singleton instance is also set to persist
+    /// across scene loads by default.
+    /// </remarks>
     public class RegulatorSingleton<T> : Singleton<T> where T : Component
     {
-        // Kept for debugging/inspection; not relied upon for correctness.
-        internal float _initializationTime;
-
         internal override void InitializeSingleton()
         {
-            _initializationTime = Time.time;
-
             // Ensure persistence root.
             transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
