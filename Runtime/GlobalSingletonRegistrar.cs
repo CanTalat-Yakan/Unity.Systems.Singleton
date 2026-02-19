@@ -22,6 +22,15 @@ namespace UnityEssentials
 
         private static readonly Dictionary<Type, Component> s_instances = new();
 
+        private static HideFlags GetRootHideFlags()
+        {
+            // In edit mode we hide the root so the hierarchy stays clean when a singleton is created lazily.
+            // In play mode we keep it visible for debugging.
+            return Application.isPlaying
+                ? HideFlags.DontSave
+                : HideFlags.DontSave | HideFlags.HideInHierarchy;
+        }
+
         public static T GetOrCreate<T>() where T : Component
         {
             var type = typeof(T);
@@ -183,23 +192,20 @@ namespace UnityEssentials
             if (root == null)
             {
                 root = new GameObject(RootName);
-                root.hideFlags = HideFlags.DontSave;
 
                 if (Application.isPlaying)
                     UnityEngine.Object.DontDestroyOnLoad(root);
             }
 
-            root.hideFlags = HideFlags.DontSave;
+            root.hideFlags = GetRootHideFlags();
             root.SetActive(true);
 
             return root;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void SubsystemRegistrationInit()
-        {
+        private static void SubsystemRegistrationInit() =>
             s_instances.Clear();
-        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateAllGlobalSingletonTypes()
@@ -240,7 +246,16 @@ namespace UnityEssentials
 
         private static void OnPlayModeStateChanged(UnityEditor.PlayModeStateChange state)
         {
-            if (state == UnityEditor.PlayModeStateChange.ExitingEditMode || 
+            // If domain reload is disabled, objects can survive transitions: always ensure the root flags match the mode.
+            if (state == UnityEditor.PlayModeStateChange.EnteredEditMode ||
+                state == UnityEditor.PlayModeStateChange.EnteredPlayMode)
+            {
+                var root = GameObject.Find(RootName);
+                if (root != null)
+                    root.hideFlags = GetRootHideFlags();
+            }
+
+            if (state == UnityEditor.PlayModeStateChange.ExitingEditMode ||
                 state == UnityEditor.PlayModeStateChange.ExitingPlayMode)
                 DestroyAll(immediate: true);
         }
