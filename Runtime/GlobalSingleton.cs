@@ -20,7 +20,7 @@ namespace UnityEssentials
 
         protected virtual void Awake() =>
             GlobalSingletonRegistrar.BindInstance(this);
-
+        
         protected virtual void OnDestroy() =>
             GlobalSingletonRegistrar.UnbindInstance(this);
     }

@@ -264,34 +264,13 @@ namespace UnityEssentials
         private static List<Type> DiscoverAllGlobalSingletonConcreteTypes()
         {
             var result = new List<Type>(32);
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            for (var i = 0; i < assemblies.Length; i++)
+            foreach (var t in PredefinedAssemblies.EnumerateRuntimeTypes(includeEditorAssemblies: false))
             {
-                var asm = assemblies[i];
-                if (asm == null || asm.IsDynamic)
-                    continue;
-
-                Type[] types;
-                try { types = asm.GetTypes(); }
-                catch (ReflectionTypeLoadException e) { types = e.Types; }
-                catch { continue; }
-
-                if (types == null)
-                    continue;
-
-                for (var j = 0; j < types.Length; j++)
-                {
-                    var t = types[j];
-                    if (t == null || t.IsAbstract)
-                        continue;
-                    if (!typeof(Component).IsAssignableFrom(t))
-                        continue;
-                    if (!IsDerivedFromOpenGeneric(t, typeof(GlobalSingleton<>)))
-                        continue;
-
-                    result.Add(t);
-                }
+                if (t == null || t.IsAbstract) continue;
+                if (!typeof(Component).IsAssignableFrom(t)) continue;
+                if (!IsDerivedFromOpenGeneric(t, typeof(GlobalSingleton<>))) continue;
+                result.Add(t);
             }
 
             result.Sort((a, b) => string.CompareOrdinal(a.FullName, b.FullName));
