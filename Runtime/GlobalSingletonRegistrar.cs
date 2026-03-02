@@ -22,6 +22,12 @@ namespace UnityEssentials
 
         private static readonly Dictionary<Type, Component> s_instances = new();
 
+        /// <summary>
+        /// True while <see cref="DestroyAll"/> is executing (e.g. during playmode transitions in the Editor).
+        /// Consumers can use this to avoid calling into native plugins while objects are being torn down.
+        /// </summary>
+        public static bool IsDestroyingAll { get; private set; }
+
         private static HideFlags GetRootHideFlags()
         {
             // In edit mode we hide the root so the hierarchy stays clean when a singleton is created lazily.
@@ -84,16 +90,27 @@ namespace UnityEssentials
 
         public static void DestroyAll(bool immediate)
         {
-            s_instances.Clear();
-
-            var root = GameObject.Find(RootName);
-            if (root == null)
+            if (IsDestroyingAll)
                 return;
 
-            if (immediate)
-                UnityEngine.Object.DestroyImmediate(root);
-            else
-                UnityEngine.Object.Destroy(root);
+            IsDestroyingAll = true;
+            try
+            {
+                s_instances.Clear();
+
+                var root = GameObject.Find(RootName);
+                if (root == null)
+                    return;
+
+                if (immediate)
+                    UnityEngine.Object.DestroyImmediate(root);
+                else
+                    UnityEngine.Object.Destroy(root);
+            }
+            finally
+            {
+                IsDestroyingAll = false;
+            }
         }
 
         private static Component CreateUnderRoot(Type type)
@@ -204,8 +221,11 @@ namespace UnityEssentials
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void SubsystemRegistrationInit() =>
+        private static void SubsystemRegistrationInit()
+        {
             s_instances.Clear();
+            IsDestroyingAll = false;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreateAllGlobalSingletonTypes()
