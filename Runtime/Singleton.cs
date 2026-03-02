@@ -18,6 +18,23 @@ namespace UnityEssentials
     public class Singleton<T> : MonoBehaviour where T : Component
     {
         internal static T s_instance;
+
+        /// <summary>
+        /// Returns true if an instance exists (or can be found) without creating one.
+        /// </summary>
+        public static bool HasInstance => TryGetInstance() != null;
+
+        /// <summary>
+        /// Attempts to get an existing instance without side effects (no auto-creation).
+        /// Returns null when none exists.
+        /// </summary>
+        public static T TryGetInstance()
+        {
+            if (s_instance != null)
+                return s_instance;
+            return null;
+        }
+
         public static T Instance
         {
             get
