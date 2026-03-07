@@ -42,11 +42,7 @@ namespace UnityEssentials
 
         private static IEnumerable<RegulatorSingleton<T>> FindExistingInstances()
         {
-            var instances = Object.FindObjectsByType<RegulatorSingleton<T>>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None
-            );
-
+            var instances = Object.FindObjectsByType<RegulatorSingleton<T>>(FindObjectsInactive.Include);
             foreach (var rs in instances)
                 if (rs != null)
                     yield return rs;
